@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Perito OBD</title>
+<meta name="theme-color" content="#0e5a6e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f7f8; --surface:#fff; --ink:#14232b; --muted:#53656e; --line:#d6dee2;
+  --accent:#0e5a6e; --accent-ink:#fff; --accent-soft:#e1eef1; --amber:#b86e00;
+  --ok:#1f7a3f; --ok-bg:#e3f3e8; --warn:#9a6200; --warn-bg:#fbf0d9; --bad:#b3261e; --bad-bg:#fbe4e2; --na:#5d6b72; --na-bg:#eceff1;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f181c; --surface:#16232a; --ink:#e4ecef; --muted:#9db0b8; --line:#2a3b43;
+  --accent:#5fb7cc; --accent-ink:#0b1d23; --accent-soft:#183843; --amber:#f0a83a;
+  --ok:#6fcf8f; --ok-bg:#163522; --warn:#f0b450; --warn-bg:#3a2c10; --bad:#ff8a80; --bad-bg:#43201d; --na:#9db0b8; --na-bg:#22313a; color-scheme:dark}}
+*{box-sizing:border-box}
+html{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body)}
+.wrap{max-width:640px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:var(--display);font-stretch:85%;margin:0;line-height:1.15}
+h1{font-size:1.9rem;font-weight:800}
+h2{font-size:1.2rem;font-weight:750}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.88rem}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.locked{opacity:.5;pointer-events:none}
+.step-head{display:flex;gap:10px;align-items:baseline}
+.step-n{font-family:var(--mono);font-size:.78rem;color:var(--amber);font-weight:500;flex:none}
+.btn{appearance:none;border:none;border-radius:8px;padding:14px 16px;font:600 1rem var(--body);cursor:pointer;background:var(--accent);color:var(--accent-ink);width:100%}
+.btn.sec{background:var(--accent-soft);color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px;min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+input{font:500 1.05rem var(--body);padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
+.status{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.status.ok{color:var(--ok)}
+.status.err{color:var(--bad)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;word-break:break-all}
+.find{display:flex;gap:12px;padding:12px;border-radius:6px;align-items:flex-start}
+.find .dot{width:14px;height:14px;border-radius:50%;flex:none;margin-top:4px}
+.find b{display:block}
+.rojo{background:var(--bad-bg)} .rojo .dot{background:var(--bad)}
+.amarillo{background:var(--warn-bg)} .amarillo .dot{background:var(--warn)}
+.verde{background:var(--ok-bg)} .verde .dot{background:var(--ok)}
+.gris{background:var(--na-bg)} .gris .dot{background:var(--na)}
+.findings{display:flex;flex-direction:column;gap:8px}
+.meter{font-family:var(--display);font-stretch:80%;font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center}
+details{font-size:.85rem}
+summary{cursor:pointer;color:var(--muted)}
+pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.banner{background:var(--warn-bg);color:var(--ink);border-radius:6px;padding:10px 12px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:6px">
+  <span class="eyebrow">Prototipo 1 · peritaje electrónico</span>
+  <h1>Perito OBD</h1>
+  <p class="muted">Conecte el adaptador bajo el volante y siga los pasos. No necesita saber usar un escáner.</p>
+</header>
+
+<div id="noBt" class="banner" hidden>Este navegador no tiene Bluetooth web. Abra esta página en <b>Chrome en un celular Android</b>. Mientras tanto puede usar el modo demo.</div>
+
+<section class="card" id="s0">
+  <div class="step-head"><span class="step-n">PASO 1</span><h2>Conectar</h2></div>
+  <p class="small muted">Ponga el contacto en ON (motor apagado). Encienda el Bluetooth del celular.</p>
+  <div class="row">
+    <button class="btn" id="btnConnect">Conectar adaptador</button>
+    <button class="btn sec" id="btnDemo">Probar modo demo</button>
+  </div>
+  <p class="status" id="connStatus">Sin conectar</p>
+</section>
+
+<section class="card locked" id="s1">
+  <div class="step-head"><span class="step-n">PASO 2</span><h2>Leer la computadora</h2></div>
+  <div class="row">
+    <label>Placa<input id="placa" autocomplete="off" placeholder="PCX-1234"></label>
+    <label>Km del tablero<input id="kmTab" inputmode="numeric" placeholder="62300"></label>
+  </div>
+  <button class="btn" id="btnRead">Leer con motor apagado</button>
+  <p class="status" id="readStatus"></p>
+  <dl class="kv" id="readKv" hidden></dl>
+</section>
+
+<section class="card locked" id="s2">
+  <div class="step-head"><span class="step-n">PASO 3</span><h2>Prueba de arranque</h2></div>
+  <p class="small muted">Presione el botón y <b>encienda el motor</b> en los siguientes 5 segundos. Déjelo encendido.</p>
+  <button class="btn" id="btnCrank">Medir arranque</button>
+  <div class="meter" id="crankMeter" hidden>--.- V</div>
+  <p class="status" id="crankStatus"></p>
+</section>
+
+<section class="card locked" id="s3">
+  <div class="step-head"><span class="step-n">PASO 4</span><h2>Motor encendido</h2></div>
+  <p class="small muted">Deje el motor en mínimo, sin tocar el acelerador. La lectura dura unos 20 segundos.</p>
+  <button class="btn" id="btnRun">Leer motor en marcha</button>
+  <p class="status" id="runStatus"></p>
+</section>
+
+<section class="card locked" id="s4">
+  <div class="step-head"><span class="step-n">RESULTADO</span><h2 id="resTitle">Certificado de peritaje</h2></div>
+  <div class="findings" id="findings"></div>
+  <p class="small muted">Evaluación electrónica preliminar. Complementa la inspección visual y la prueba de manejo.</p>
+  <div class="row">
+    <button class="btn" id="btnWa">Enviar por WhatsApp</button>
+    <button class="btn sec" id="btnCopy">Copiar texto</button>
+  </div>
+  <p class="status" id="copyStatus"></p>
+</section>
+
+<details>
+  <summary>Registro técnico (para enviar a soporte)</summary>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+    <pre id="log"></pre>
+    <button class="btn sec" id="btnLog">Copiar registro</button>
+  </div>
+</details>
+
+</div>
+<script src="obd.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var logEl = $("log"), T = null, data = {};
+  function log(m){ logEl.textContent += new Date().toTimeString().slice(0,8) + "  " + m + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+  function status(id, txt, cls){ var e = $(id); e.textContent = txt; e.className = "status" + (cls ? " " + cls : ""); }
+  function unlock(id){ $(id).classList.remove("locked"); }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  async function cmd(c, t){ var r = await T.send(c, t); log("> " + c + "  ⟶  " + r.replace(/[\r\n>]+/g, " | ").trim()); return r; }
+
+  if (!navigator.bluetooth) $("noBt").hidden = false;
+
+  async function initElm(){
+    await cmd("ATZ", 5000); await cmd("ATE0"); await cmd("ATL0"); await cmd("ATS0"); await cmd("ATH0"); await cmd("ATSP0");
+    var r = await cmd("0100", 12000);
+    if (OBD.isNoData ? OBD.isNoData(r) : /NO ?DATA|UNABLE/i.test(r)) throw new Error("El carro no respondió. Revise que el contacto esté en ON.");
+    var p = await cmd("ATDPN"); log("Protocolo: " + p.replace(/[\r\n>]+/g," ").trim());
+  }
+
+  async function start(transport, label){
+    T = transport; data = {};
+    status("connStatus", "Conectando…");
+    try {
+      await T.connect();
+      status("connStatus", "Conectado: hablando con el carro…");
+      await initElm();
+      status("connStatus", "Conectado " + label, "ok");
+      unlock("s1");
+    } catch(e){ log("Error: " + e.message); status("connStatus", e.message, "err"); }
+  }
+
+  $("btnConnect").onclick = function(){ start(new OBD.BleTransport(log), "al adaptador"); };
+  $("btnDemo").onclick = function(){ start(new OBD.DemoTransport(), "(modo demo: Kia Sportage simulado)"); $("placa").value = "PDA-0000"; $("kmTab").value = "62300"; };
+
+  $("btnRead").onclick = async function(){
+    var b = this; b.disabled = true; status("readStatus", "Leyendo…");
+    try {
+      data.placa = $("placa").value.trim().toUpperCase();
+      var k = parseInt($("kmTab").value.replace(/\D/g,""), 10); data.kmTablero = isNaN(k) ? null : k;
+      data.vin = OBD.parseVin(await cmd("0902", 6000));
+      data.monitores = OBD.parseMonitors(await cmd("0101"));
+      data.dtcActivos = OBD.parseDtcs(await cmd("03", 6000), "43");
+      data.dtcPendientes = OBD.parseDtcs(await cmd("07", 6000), "47");
+      data.dtcPermanentes = OBD.parseDtcs(await cmd("0A", 6000), "4A");
+      data.kmDesdeBorrado = OBD.decodePid(await cmd("0131"), "31");
+      data.kmConTestigo = OBD.decodePid(await cmd("0121"), "21");
+      data.minDesdeBorrado = OBD.decodePid(await cmd("014E"), "4E");
+      data.odometroEcu = OBD.decodePid(await cmd("01A6"), "A6");
+      data.voltajeReposo = OBD.parseVoltage(await cmd("ATRV"));
+      var m = data.monitores, kv = $("readKv");
+      var rows = [
+        ["VIN", data.vin || "no disponible"],
+        ["Testigo motor", m ? (m.mil ? "ENCENDIDO" : "apagado") : "—"],
+        ["Fallas", (data.dtcActivos.length + data.dtcPendientes.length + data.dtcPermanentes.length) + " encontradas"],
+        ["Monitores", m ? (m.monitors.length - m.incomplete) + " de " + m.monitors.length + " completos" : "—"],
+        ["Km desde borrado", data.kmDesdeBorrado != null ? data.kmDesdeBorrado.toLocaleString("es-EC") : "—"],
+        ["Odómetro ECU", data.odometroEcu != null ? data.odometroEcu.toLocaleString("es-EC") + " km" : "no lo entrega"],
+        ["Batería", data.voltajeReposo != null ? data.voltajeReposo.toFixed(1) + " V" : "—"]
+      ];
+      kv.innerHTML = "";
+      rows.forEach(function(r){ var dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = r[0]; dd.textContent = r[1]; kv.append(dt, dd); });
+      kv.hidden = false;
+      status("readStatus", "Lectura completa", "ok");
+      unlock("s2");
+    } catch(e){ log("Error: " + e.message); status("readStatus", e.message, "err"); }
+    b.disabled = false;
+  };
+
+  $("btnCrank").onclick = async function(){
+    var b = this; b.disabled = true; var meter = $("crankMeter"); meter.hidden = false;
+    var min = 99, end = Date.now() + 9000;
+    if (T.cranking !== undefined) setTimeout(function(){ T.cranking = true; }, 1500), setTimeout(function(){ T.cranking = false; T.running = true; }, 3500);
+    status("crankStatus", "Encienda el motor ahora…");
+    while (Date.now() < end){
+      var v = OBD.parseVoltage(await T.send("ATRV", 1500));
+      if (v != null){ if (v < min) min = v; meter.textContent = v.toFixed(1) + " V"; }
+    }
+    log("Voltaje mínimo de arranque: " + min);
+    data.voltajeArranque = min < 99 ? min : null;
+    meter.textContent = data.voltajeArranque != null ? "mín. " + data.voltajeArranque.toFixed(1) + " V" : "sin lectura";
+    status("crankStatus", data.voltajeArranque != null ? "Arranque medido" : "No se pudo medir", data.voltajeArranque != null ? "ok" : "err");
+    unlock("s3"); b.disabled = false;
+  };
+
+  function avg(a){ a = a.filter(function(x){ return x != null; }); return a.length ? Math.round(a.reduce(function(s,x){ return s + x; }, 0) / a.length * 10) / 10 : null; }
+
+  $("btnRun").onclick = async function(){
+    var b = this; b.disabled = true;
+    var s = { rpm:[], ref:[], st1:[], lt1:[], st2:[], lt2:[], v:[] };
+    try {
+      for (var i = 0; i < 5; i++){
+        status("runStatus", "Midiendo… " + (i + 1) + " de 5");
+        s.rpm.push(OBD.decodePid(await cmd("010C"), "0C"));
+        s.ref.push(OBD.decodePid(await cmd("0105"), "05"));
+        s.st1.push(OBD.decodePid(await cmd("0106"), "06"));
+        s.lt1.push(OBD.decodePid(await cmd("0107"), "07"));
+        s.st2.push(OBD.decodePid(await cmd("0108"), "08"));
+        s.lt2.push(OBD.decodePid(await cmd("0109"), "09"));
+        s.v.push(OBD.parseVoltage(await cmd("ATRV")));
+        await sleep(2500);
+      }
+      data.rpm = avg(s.rpm); data.refrigerante = avg(s.ref) != null ? Math.round(avg(s.ref)) : null;
+      data.stft1 = avg(s.st1); data.ltft1 = avg(s.lt1); data.stft2 = avg(s.st2); data.ltft2 = avg(s.lt2); data.voltajeCarga = avg(s.v);
+      if (!data.rpm) status("runStatus", "El motor parece apagado. Enciéndalo y repita.", "err");
+      else { status("runStatus", "Lectura completa (" + data.rpm + " rpm)", "ok"); showResult(); }
+    } catch(e){ log("Error: " + e.message); status("runStatus", e.message, "err"); }
+    b.disabled = false;
+  };
+
+  var ICON = { rojo:"🔴", amarillo:"🟡", verde:"🟢", gris:"⚪" };
+  function certText(f){
+    var head = "CERTIFICADO DE PERITAJE ELECTRÓNICO\n" + (data.placa ? "Placa: " + data.placa + "\n" : "") + (data.vin ? "VIN: " + data.vin + "\n" : "") +
+      (data.kmTablero != null ? "Km tablero: " + data.kmTablero.toLocaleString("es-EC") + "\n" : "") + "Fecha: " + new Date().toLocaleDateString("es-EC") + "\n\n";
+    return head + f.map(function(x){ return ICON[x.nivel] + " " + x.titulo + "\n" + x.detalle; }).join("\n\n") +
+      "\n\nEvaluación electrónica preliminar; complementa la inspección visual y la prueba de manejo.";
+  }
+
+  function showResult(){
+    var f = OBD.evaluate(data), box = $("findings"); box.innerHTML = "";
+    f.forEach(function(x){
+      var d = document.createElement("div"); d.className = "find " + x.nivel;
+      var dot = document.createElement("span"); dot.className = "dot";
+      var t = document.createElement("div"), b = document.createElement("b"), p = document.createElement("span");
+      b.textContent = x.titulo; p.className = "small"; p.textContent = x.detalle;
+      t.append(b, p); d.append(dot, t); box.append(d);
+    });
+    $("resTitle").textContent = "Certificado" + (data.placa ? " · " + data.placa : "");
+    data.texto = certText(f);
+    log("Datos: " + JSON.stringify(data, function(k, v){ return k === "texto" ? undefined : v; }));
+    unlock("s4");
+    $("s4").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function copy(txt, id){
+    var done = function(){ status(id, "Copiado", "ok"); };
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, function(){ status(id, "No se pudo copiar", "err"); });
+  }
+  $("btnCopy").onclick = function(){ copy(data.texto || "", "copyStatus"); };
+  $("btnWa").onclick = function(){ window.location.href = "https://wa.me/?text=" + encodeURIComponent(data.texto || ""); };
+  $("btnLog").onclick = function(){ copy(logEl.textContent, "copyStatus"); };
+})();
+</script>
+</body>
+</html>
