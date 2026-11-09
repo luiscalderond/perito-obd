@@ -137,7 +137,9 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
 
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="obd.js"></script>
+<script src="cloud.js"></script>
 <script>
 (function(){
   "use strict";
@@ -269,7 +271,9 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
     data.hallazgos = f;
     data.fecha = new Date();
     data.texto = certText(f);
-    makeCode().then(function(c){ data.codigo = c; data.texto += "\nCódigo de verificación: " + c; $("certCode").textContent = "Código de verificación: " + c; });
+    data.codigo = null; data.registrado = false;
+    $("certCode").textContent = "Registrando certificado…";
+    registerCert();
     log("Datos: " + JSON.stringify(data, function(k, v){ return k === "texto" ? undefined : v; }));
     unlock("s4");
     $("s4").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -281,6 +285,30 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
   }
   $("btnCopy").onclick = function(){ copy(data.texto || "", "copyStatus"); };
   $("btnWa").onclick = function(){ window.location.href = "https://wa.me/?text=" + encodeURIComponent(data.texto || ""); };
+  // ---------- Registro en línea ----------
+  var registering = null;
+  function registerCert(){
+    registering = window.CLOUD ? CLOUD.registrar(data).then(function(r){
+      data.codigo = r.codigo; data.registrado = true;
+    }).catch(function(e){
+      log("No se pudo registrar en línea: " + e.message);
+      return makeCode().then(function(c){ data.codigo = c; });
+    }).then(function(){
+      var url = data.registrado ? CLOUD.urlVerificacion(data.codigo) : "";
+      data.texto = certText(data.hallazgos) + "\nCódigo de verificación: " + data.codigo + (url ? "\nVerifique el original en: " + url : "\n(Sin registro en línea)");
+      $("certCode").textContent = "Código de verificación: " + data.codigo + (data.registrado ? " · registrado en línea" : " · sin internet, no se registró en línea");
+    }) : makeCode().then(function(c){ data.codigo = c; });
+    return registering;
+  }
+  async function ensureCode(){ if (registering) await registering; if (!data.codigo) data.codigo = await makeCode(); }
+
+  function qrCanvas(text){
+    if (!window.QRCode) return null;
+    var div = document.createElement("div");
+    new QRCode(div, { text: text, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+    return div.querySelector("canvas");
+  }
+
   // ---------- Certificado como imagen y PDF ----------
   async function makeCode(){
     var src = JSON.stringify([data.placa, data.vin, data.kmTablero, data.fecha && data.fecha.toISOString(), (data.hallazgos || []).map(function(x){ return x.nivel + x.titulo + x.detalle; })]);
@@ -311,7 +339,7 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
     // Medir alto
     ctx.font = body;
     var blocks = f.map(function(x){ return { x: x, lines: wrapLines(ctx, x.detalle, inner - 120) }; });
-    var H = 330 + blocks.reduce(function(s, b){ return s + 116 + b.lines.length * 36; }, 0) + 200;
+    var H = 330 + blocks.reduce(function(s, b){ return s + 116 + b.lines.length * 36; }, 0) + 320;
     c.width = W; c.height = H;
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
     // Encabezado
@@ -343,6 +371,12 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
     wrapLines(ctx, "Evaluación electrónica preliminar obtenida del sistema OBD-II del vehículo. Complementa la inspección visual y la prueba de manejo.", inner).forEach(function(l){ ctx.fillText(l, P, y); y += 30; });
     y += 20; ctx.fillStyle = "#14232b"; ctx.font = "600 28px 'IBM Plex Mono', monospace";
     ctx.fillText("Código de verificación: " + (data.codigo || ""), P, y);
+    var qr = data.registrado && qrCanvas(CLOUD.urlVerificacion(data.codigo));
+    if (qr){
+      ctx.font = "22px 'IBM Plex Sans', system-ui, sans-serif"; ctx.fillStyle = "#53656e";
+      wrapLines(ctx, "Escanee el código QR para ver el certificado original registrado. Si los datos no coinciden con este documento, fue modificado.", inner - 280).forEach(function(l, i){ ctx.fillText(l, P, y + 44 + i * 30); });
+      ctx.drawImage(qr, W - P - 220, y - 30, 220, 220);
+    }
     return c;
   }
 
@@ -364,7 +398,7 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
 
   $("btnImg").onclick = async function(){
     status("copyStatus", "Generando imagen…");
-    if (!data.codigo) data.codigo = await makeCode();
+    await ensureCode();
     var c = await drawCertificate();
     c.toBlob(function(b){ shareOrSave(b, fileName("png"), "image/png"); }, "image/png");
   };
@@ -372,7 +406,7 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
   $("btnPdf").onclick = async function(){
     if (!window.jspdf){ status("copyStatus", "No se pudo cargar el generador de PDF. Revise el internet.", "err"); return; }
     status("copyStatus", "Generando PDF…");
-    if (!data.codigo) data.codigo = await makeCode();
+    await ensureCode();
     var c = await drawCertificate();
     var pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
     var pw = 210, ph = 297, m = 10, w = pw - m * 2, h = w * c.height / c.width;

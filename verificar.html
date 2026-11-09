@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Verificar certificado · Perito OBD</title>
+<meta name="theme-color" content="#0e5a6e">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f7f8; --surface:#fff; --ink:#14232b; --muted:#53656e; --line:#d6dee2;
+  --accent:#0e5a6e; --accent-ink:#fff; --accent-soft:#e1eef1; --amber:#b86e00;
+  --ok:#1f7a3f; --ok-bg:#e3f3e8; --warn:#9a6200; --warn-bg:#fbf0d9; --bad:#b3261e; --bad-bg:#fbe4e2; --na:#5d6b72; --na-bg:#eceff1;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f181c; --surface:#16232a; --ink:#e4ecef; --muted:#9db0b8; --line:#2a3b43;
+  --accent:#5fb7cc; --accent-ink:#0b1d23; --accent-soft:#183843; --amber:#f0a83a;
+  --ok:#6fcf8f; --ok-bg:#163522; --warn:#f0b450; --warn-bg:#3a2c10; --bad:#ff8a80; --bad-bg:#43201d; --na:#9db0b8; --na-bg:#22313a; color-scheme:dark}}
+*{box-sizing:border-box}
+html{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body)}
+.wrap{max-width:640px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:var(--display);font-stretch:85%;margin:0;line-height:1.15}
+h1{font-size:1.9rem;font-weight:800}
+h2{font-size:1.2rem;font-weight:750}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.88rem}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.locked{opacity:.5;pointer-events:none}
+.step-head{display:flex;gap:10px;align-items:baseline}
+.step-n{font-family:var(--mono);font-size:.78rem;color:var(--amber);font-weight:500;flex:none}
+.btn{appearance:none;border:none;border-radius:8px;padding:14px 16px;font:600 1rem var(--body);cursor:pointer;background:var(--accent);color:var(--accent-ink);width:100%}
+.btn.sec{background:var(--accent-soft);color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px;min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+input{font:500 1.05rem var(--body);padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
+.status{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.status.ok{color:var(--ok)}
+.status.err{color:var(--bad)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;word-break:break-all}
+.find{display:flex;gap:12px;padding:12px;border-radius:6px;align-items:flex-start}
+.find .dot{width:14px;height:14px;border-radius:50%;flex:none;margin-top:4px}
+.find b{display:block}
+.rojo{background:var(--bad-bg)} .rojo .dot{background:var(--bad)}
+.amarillo{background:var(--warn-bg)} .amarillo .dot{background:var(--warn)}
+.verde{background:var(--ok-bg)} .verde .dot{background:var(--ok)}
+.gris{background:var(--na-bg)} .gris .dot{background:var(--na)}
+.findings{display:flex;flex-direction:column;gap:8px}
+.meter{font-family:var(--display);font-stretch:80%;font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center}
+details{font-size:.85rem}
+summary{cursor:pointer;color:var(--muted)}
+pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.banner{background:var(--warn-bg);color:var(--ink);border-radius:6px;padding:10px 12px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.seal{display:flex;gap:12px;align-items:center;padding:14px;border-radius:8px}
+.seal b{font-family:var(--display);font-stretch:85%;font-size:1.25rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:6px">
+  <span class="eyebrow">Perito OBD · verificación</span>
+  <h1>Verificar certificado</h1>
+  <p class="muted">Compare los datos de esta página con el certificado que recibió. Si algo no coincide, el documento fue modificado.</p>
+</header>
+<section class="card">
+  <label>Código de verificación<input id="code" autocomplete="off" placeholder="PO-XXXX-XXXX"></label>
+  <button class="btn" id="btnCheck">Verificar</button>
+  <p class="status" id="st"></p>
+</section>
+<section class="card" id="res" hidden>
+  <div class="seal verde" id="seal"><span class="dot" style="width:16px;height:16px;border-radius:50%;background:var(--ok);flex:none"></span><div><b>Certificado original registrado</b><br><span class="small" id="sealDate"></span></div></div>
+  <dl class="kv" id="kv"></dl>
+  <div class="findings" id="findings"></div>
+  <p class="small muted">Evaluación electrónica preliminar obtenida del sistema OBD-II del vehículo. Complementa la inspección visual y la prueba de manejo.</p>
+</section>
+</div>
+<script src="cloud.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var NIVEL = { rojo:"ALERTA", amarillo:"REVISAR", verde:"BIEN", gris:"SIN DATO" };
+  function st(t, cls){ $("st").textContent = t; $("st").className = "status" + (cls ? " " + cls : ""); }
+  async function check(){
+    var code = $("code").value.trim().toUpperCase();
+    $("res").hidden = true;
+    if (!/^PO-[0-9A-F]{4}-[0-9A-F]{4}$/.test(code)){ st("Escriba el código como aparece en el certificado, por ejemplo PO-1A2B-3C4D.", "err"); return; }
+    st("Buscando…");
+    try {
+      var r = await CLOUD.ver(code);
+      if (!r){ st("No existe un certificado con ese código. El documento puede ser falso o el código estar mal escrito.", "err"); return; }
+      st("");
+      $("sealDate").textContent = "Código " + r.codigo + " · emitido el " + new Date(r.creado_en).toLocaleString("es-EC");
+      var kv = $("kv"); kv.innerHTML = "";
+      [["Placa", r.placa || "—"], ["VIN", r.vin || "—"], ["Km tablero", r.km_tablero != null ? r.km_tablero.toLocaleString("es-EC") : "—"]].forEach(function(p){
+        var dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = p[0]; dd.textContent = p[1]; kv.append(dt, dd);
+      });
+      var box = $("findings"); box.innerHTML = "";
+      (r.hallazgos || []).forEach(function(x){
+        var nivel = NIVEL[x.nivel] ? x.nivel : "gris";
+        var d = document.createElement("div"); d.className = "find " + nivel;
+        var dot = document.createElement("span"); dot.className = "dot";
+        var t = document.createElement("div"), lab = document.createElement("span"), b = document.createElement("b"), p = document.createElement("span");
+        lab.className = "small"; lab.style.fontFamily = "var(--mono)"; lab.textContent = NIVEL[nivel];
+        b.textContent = x.titulo || ""; p.className = "small"; p.textContent = x.detalle || "";
+        t.append(lab, b, p); d.append(dot, t); box.append(d);
+      });
+      $("res").hidden = false;
+    } catch(e){ st("No se pudo consultar. Revise su conexión a internet e intente de nuevo.", "err"); }
+  }
+  $("btnCheck").onclick = check;
+  $("code").addEventListener("keydown", function(e){ if (e.key === "Enter") check(); });
+  var c = new URLSearchParams(location.search).get("c");
+  if (c){ $("code").value = c; check(); }
+})();
+</script>
+</body>
+</html>
