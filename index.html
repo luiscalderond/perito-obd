@@ -116,7 +116,12 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
   <div class="findings" id="findings"></div>
   <p class="small muted">Evaluación electrónica preliminar. Complementa la inspección visual y la prueba de manejo.</p>
   <div class="row">
-    <button class="btn" id="btnWa">Enviar por WhatsApp</button>
+    <button class="btn" id="btnImg">Enviar como imagen</button>
+    <button class="btn" id="btnPdf">Descargar PDF</button>
+  </div>
+  <p class="small muted" id="certCode"></p>
+  <div class="row">
+    <button class="btn sec" id="btnWa">Enviar texto por WhatsApp</button>
     <button class="btn sec" id="btnCopy">Copiar texto</button>
   </div>
   <p class="status" id="copyStatus"></p>
@@ -131,6 +136,7 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
 </details>
 
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="obd.js"></script>
 <script>
 (function(){
@@ -260,7 +266,10 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
       t.append(b, p); d.append(dot, t); box.append(d);
     });
     $("resTitle").textContent = "Certificado" + (data.placa ? " · " + data.placa : "");
+    data.hallazgos = f;
+    data.fecha = new Date();
     data.texto = certText(f);
+    makeCode().then(function(c){ data.codigo = c; data.texto += "\nCódigo de verificación: " + c; $("certCode").textContent = "Código de verificación: " + c; });
     log("Datos: " + JSON.stringify(data, function(k, v){ return k === "texto" ? undefined : v; }));
     unlock("s4");
     $("s4").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -272,6 +281,107 @@ pre{font:12px/1.4 var(--mono);background:var(--bg);border:1px solid var(--line);
   }
   $("btnCopy").onclick = function(){ copy(data.texto || "", "copyStatus"); };
   $("btnWa").onclick = function(){ window.location.href = "https://wa.me/?text=" + encodeURIComponent(data.texto || ""); };
+  // ---------- Certificado como imagen y PDF ----------
+  async function makeCode(){
+    var src = JSON.stringify([data.placa, data.vin, data.kmTablero, data.fecha && data.fecha.toISOString(), (data.hallazgos || []).map(function(x){ return x.nivel + x.titulo + x.detalle; })]);
+    var hex = "";
+    try {
+      var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(src));
+      hex = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, "0"); }).join("");
+    } catch(e){ var h = 0; for (var i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) >>> 0; hex = h.toString(16).padStart(8, "0"); }
+    hex = hex.slice(0, 8).toUpperCase();
+    return "PO-" + hex.slice(0, 4) + "-" + hex.slice(4);
+  }
+
+  function wrapLines(ctx, text, maxW){
+    var words = String(text).split(/\s+/), lines = [], line = "";
+    words.forEach(function(w){ var t = line ? line + " " + w : w; if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t; });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  var COLORS = { rojo:["#b3261e","#fbe4e2"], amarillo:["#9a6200","#fbf0d9"], verde:["#1f7a3f","#e3f3e8"], gris:["#5d6b72","#eceff1"] };
+  var NIVEL_TXT = { rojo:"ALERTA", amarillo:"REVISAR", verde:"BIEN", gris:"SIN DATO" };
+
+  async function drawCertificate(){
+    try { await document.fonts.ready; } catch(e){}
+    var W = 1080, P = 64, inner = W - P * 2, f = data.hallazgos || [];
+    var body = "26px 'IBM Plex Sans', system-ui, sans-serif", bold = "600 30px 'IBM Plex Sans', system-ui, sans-serif";
+    var c = document.createElement("canvas"), ctx = c.getContext("2d");
+    // Medir alto
+    ctx.font = body;
+    var blocks = f.map(function(x){ return { x: x, lines: wrapLines(ctx, x.detalle, inner - 120) }; });
+    var H = 330 + blocks.reduce(function(s, b){ return s + 116 + b.lines.length * 36; }, 0) + 200;
+    c.width = W; c.height = H;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    // Encabezado
+    ctx.fillStyle = "#0e5a6e"; ctx.fillRect(0, 0, W, 150);
+    ctx.fillStyle = "#ffffff"; ctx.font = "800 46px 'Archivo', 'Arial Narrow', sans-serif"; ctx.fillText("Certificado de Peritaje Electrónico", P, 82);
+    ctx.font = "500 24px 'IBM Plex Mono', monospace"; ctx.fillText("PERITO OBD · " + (data.fecha || new Date()).toLocaleString("es-EC"), P, 122);
+    // Datos del vehículo
+    ctx.fillStyle = "#14232b"; ctx.font = bold;
+    var y = 205;
+    ctx.fillText("Placa: " + (data.placa || "—"), P, y);
+    ctx.fillText("Km tablero: " + (data.kmTablero != null ? data.kmTablero.toLocaleString("es-EC") : "—"), P + inner / 2, y);
+    y += 44; ctx.font = "500 26px 'IBM Plex Mono', monospace"; ctx.fillStyle = "#53656e";
+    ctx.fillText("VIN: " + (data.vin || "no disponible"), P, y);
+    y += 30; ctx.strokeStyle = "#d6dee2"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(W - P, y); ctx.stroke();
+    y += 30;
+    // Hallazgos
+    blocks.forEach(function(b){
+      var col = COLORS[b.x.nivel] || COLORS.gris, h = 92 + b.lines.length * 36;
+      ctx.fillStyle = col[1]; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(P, y, inner, h, 14); else ctx.rect(P, y, inner, h); ctx.fill();
+      ctx.fillStyle = col[0]; ctx.beginPath(); ctx.arc(P + 40, y + 42, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.font = "600 20px 'IBM Plex Mono', monospace"; ctx.fillText(NIVEL_TXT[b.x.nivel] || "", P + 80, y + 34);
+      ctx.fillStyle = "#14232b"; ctx.font = bold; ctx.fillText(b.x.titulo, P + 80, y + 66);
+      ctx.font = body; ctx.fillStyle = "#33444c";
+      b.lines.forEach(function(l, i){ ctx.fillText(l, P + 80, y + 104 + i * 36); });
+      y += h + 24;
+    });
+    // Pie
+    y += 10; ctx.fillStyle = "#53656e"; ctx.font = "22px 'IBM Plex Sans', system-ui, sans-serif";
+    wrapLines(ctx, "Evaluación electrónica preliminar obtenida del sistema OBD-II del vehículo. Complementa la inspección visual y la prueba de manejo.", inner).forEach(function(l){ ctx.fillText(l, P, y); y += 30; });
+    y += 20; ctx.fillStyle = "#14232b"; ctx.font = "600 28px 'IBM Plex Mono', monospace";
+    ctx.fillText("Código de verificación: " + (data.codigo || ""), P, y);
+    return c;
+  }
+
+  function fileName(ext){ return "certificado-" + (data.placa || "vehiculo").replace(/[^A-Z0-9-]/gi, "") + "-" + (data.codigo || "") + "." + ext; }
+
+  function saveBlob(blob, name){
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+
+  async function shareOrSave(blob, name, type){
+    var file = new File([blob], name, { type: type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })){
+      try { await navigator.share({ files: [file], title: "Certificado de peritaje", text: "Certificado de peritaje " + (data.placa || "") }); status("copyStatus", "Listo", "ok"); return; }
+      catch(e){ if (e.name === "AbortError") return; }
+    }
+    saveBlob(blob, name); status("copyStatus", "Archivo descargado: " + name, "ok");
+  }
+
+  $("btnImg").onclick = async function(){
+    status("copyStatus", "Generando imagen…");
+    if (!data.codigo) data.codigo = await makeCode();
+    var c = await drawCertificate();
+    c.toBlob(function(b){ shareOrSave(b, fileName("png"), "image/png"); }, "image/png");
+  };
+
+  $("btnPdf").onclick = async function(){
+    if (!window.jspdf){ status("copyStatus", "No se pudo cargar el generador de PDF. Revise el internet.", "err"); return; }
+    status("copyStatus", "Generando PDF…");
+    if (!data.codigo) data.codigo = await makeCode();
+    var c = await drawCertificate();
+    var pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
+    var pw = 210, ph = 297, m = 10, w = pw - m * 2, h = w * c.height / c.width;
+    if (h > ph - m * 2){ h = ph - m * 2; w = h * c.width / c.height; }
+    pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", (pw - w) / 2, m, w, h);
+    pdf.setProperties({ title: "Certificado de peritaje " + (data.placa || ""), subject: "Código " + data.codigo });
+    shareOrSave(pdf.output("blob"), fileName("pdf"), "application/pdf");
+  };
+
   $("btnLog").onclick = function(){ copy(logEl.textContent, "copyStatus"); };
 })();
 </script>
